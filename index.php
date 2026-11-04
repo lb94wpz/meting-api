@@ -94,13 +94,23 @@ if (file_exists($qmck_file)) {
     $tencent_cookie = 'local';
 };
 
-// 设置cookie
+// 设置cookie（登录 Cookie 可通过环境变量注入，Vercel: Project Settings - Environment Variables）
 if ($server == 'netease') {
-    $api->cookie('');
-} else if ($server == 'tencent' && $tencent_cookie == 'local') {
-    $api->cookie('');
-} else if ($server == 'tencent' && $tencent_cookie != 'local') {
-    $api->cookie($tencent_cookie);
+    // 网易登录 Cookie 通过环境变量 NETEASE_COOKIE 注入
+    $netease_cookie = getenv('NETEASE_COOKIE') ?: ($_SERVER['NETEASE_COOKIE'] ?? '');
+    if ($netease_cookie !== '') {
+        $api->cookie($netease_cookie);
+    }
+} else if ($server == 'tencent') {
+    // 腾讯登录 Cookie 通过环境变量 TENCENT_COOKIE 注入，优先级高于 src/QMCookie.php；未配置时沿用原逻辑
+    $tencent_cookie_env = getenv('TENCENT_COOKIE') ?: ($_SERVER['TENCENT_COOKIE'] ?? '');
+    if ($tencent_cookie_env !== '') {
+        $api->cookie($tencent_cookie_env);
+    } else if ($tencent_cookie == 'local') {
+        $api->cookie('');
+    } else {
+        $api->cookie($tencent_cookie);
+    }
 } else {
     echo '{"error":"不支持的音乐源"}';
     exit;
