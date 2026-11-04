@@ -1,0 +1,31 @@
+{
+    frankenphp
+    auto_https off
+}
+
+:{$PORT:80} {
+    # 防盗链：ALLOWED_DOMAINS 为逗号分隔的域名白名单
+    # 设置后，请求必须携带 Referer，且其主机名必须是白名单中的某个域名或该域名的子域名
+    # 若请求带有 Origin 头，则 Origin 的主机名也必须同样匹配，否则 403。
+    # 未设置 ALLOWED_DOMAINS 时不做任何校验（放行所有来源）。
+    @denied {
+        query type=*
+        expression `"{$ALLOWED_DOMAINS:}" != "" &&
+            !"{$ALLOWED_DOMAINS:}".lowerAscii().split(",").exists(d,
+                d.trim() != "" &&
+                {http.request.header.Referer}.lowerAscii().split("://").size() > 1 &&
+                ({http.request.header.Referer}.lowerAscii().split("://")[1].split("/")[0].split(":")[0] == d.trim() ||
+                 {http.request.header.Referer}.lowerAscii().split("://")[1].split("/")[0].split(":")[0].endsWith("." + d.trim())) &&
+                ({http.request.header.Origin} == "" ||
+                 ({http.request.header.Origin}.lowerAscii().split("://").size() > 1 &&
+                  ({http.request.header.Origin}.lowerAscii().split("://")[1].split("/")[0].split(":")[0] == d.trim() ||
+                   {http.request.header.Origin}.lowerAscii().split("://")[1].split("/")[0].split(":")[0].endsWith("." + d.trim()))))
+            )`
+    }
+    respond @denied "Forbidden" 403
+
+    root * /app
+    php_server {
+        env HTTPS on
+    }
+}

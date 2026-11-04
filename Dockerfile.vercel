@@ -1,0 +1,17 @@
+FROM dunglas/frankenphp:php8.4
+
+# meting-api 必需的扩展
+RUN install-php-extensions \
+    bcmath \
+    curl \
+    openssl \
+    mbstring \
+    json \
+    xml
+
+WORKDIR /app
+COPY . /app
+
+# 覆盖 FrankenPHP 默认 Caddyfile（监听 Vercel 分配的 $PORT）
+# 注意：dunglas/frankenphp 镜像读取的是 /etc/frankenphp/Caddyfile，不是 /etc/caddy/Caddyfile
+COPY Caddyfile /etc/frankenphp/Caddyfile
