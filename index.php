@@ -6,9 +6,11 @@ define('Only_Https', true);
 // 设置歌单文件缓存及时间
 define('CACHE', false);
 define('CACHE_TIME', 86400);
-// 设置AUTH密钥-更改'meting-secret'
-define('AUTH', false);
-define('AUTH_SECRET', 'meting-secret');
+// 设置AUTH开关及密钥（可通过环境变量 AUTH / AUTH_SECRET 配置，Vercel: Project Settings - Environment Variables；未配置时使用默认值）
+$auth_env = getenv('AUTH') ?: ($_SERVER['AUTH'] ?? '');
+define('AUTH', filter_var($auth_env, FILTER_VALIDATE_BOOLEAN));
+$auth_secret_env = getenv('AUTH_SECRET') ?: ($_SERVER['AUTH_SECRET'] ?? '');
+define('AUTH_SECRET', $auth_secret_env !== '' ? $auth_secret_env : 'meting-secret');
 
 if (!isset($_GET['type']) || !isset($_GET['id'])) {
     require_once __DIR__ . '/src/Meting.php';
@@ -31,8 +33,15 @@ $info = filter_input(INPUT_GET, 'info', FILTER_SANITIZE_SPECIAL_CHARS) ?: 'false
 
 if (AUTH) {
     $auth = isset($_GET['auth']) ? $_GET['auth'] : '';
-    if (in_array($type, ['url', 'pic', 'lrc'])) {
+    if (in_array($type, ['name', 'artist', 'url', 'pic', 'lrc', 'song', 'playlist'])) {
         if ($auth == '' || $auth != auth($server . $type . $id)) {
+            http_response_code(403);
+            exit;
+        }
+    } else if ($type == 'search') {
+        // search 的 id 恒为 0，改用关键词参与签名
+        $auth_keyword = isset($_GET['keyword']) ? $_GET['keyword'] : '';
+        if ($auth == '' || $auth != auth($server . 'search' . $auth_keyword)) {
             http_response_code(403);
             exit;
         }
